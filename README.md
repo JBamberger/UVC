@@ -34,6 +34,18 @@ python eval_pck.py
 ```
 Note you need to generate your own `testlist_split1.txt` w.r.t the JHMDB dataset path.
 
+# Test on VIP
+```
+python test_VIP_instance_FAST_2stage.py --evaluate --cropSize 560 --cropSize2 80 --videoLen 2 --save_path VIP_ours --topk_vis 50 --predDistance 3 --save_path VIP_ours
+```
+
+and
+
+```
+python eval_instance2.py
+```
+Note you need to generate your own `vallist_ins.txt` w.r.t the VIP dataset path.
+
 # Acknowledgements
 - This code is based on [TPN](https://arxiv.org/pdf/1804.08758.pdf) and [TimeCycle](https://github.com/xiaolonw/TimeCycle).
 - For any issues, please contact xli75@ucmerced.edu or sifeil@nvidia.com.
