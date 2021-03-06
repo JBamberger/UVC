@@ -4,6 +4,7 @@ import torch.nn as nn
 from libs.net_utils import NLM, NLM_dot, NLM_woSoft
 from torchvision.models import resnet18
 from libs.autoencoder import encoder3, decoder3, encoder_res18, encoder_res50
+import torch.nn.functional as F
 
 from libs.utils import *
 
@@ -115,7 +116,7 @@ class track_match_comb(nn.Module):
 		self.coord_switch = coord_switch
 
 
-	def forward(self, img_ref, img_tar, warm_up=True, patch_size=None):
+	def forward(self, img_ref, img_tar, warm_up=True, patch_size=None, norm=False):
 		n, c, h_ref, w_ref = img_ref.size()
 		n, c, h_tar, w_tar = img_tar.size()
 		gray_ref = copy.deepcopy(img_ref[:,0].view(n,1,h_ref,w_ref).repeat(1,3,1,1))
@@ -129,6 +130,12 @@ class track_match_comb(nn.Module):
 
 		Fgray1 = self.gray_encoder(gray_ref)
 		Fgray2 = self.gray_encoder(gray_tar)
+
+		if norm:
+			Fgray1 = F.normalize(Fgray1, p=2, dim=1)
+			Fgray2 = F.normalize(Fgray2, p=2, dim=1)
+
+
 		Fcolor1 = self.rgb_encoder(img_ref)
 
 		output = []

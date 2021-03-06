@@ -42,6 +42,7 @@ def parse_args():
 
 	# main parameters
 	parser.add_argument("--pretrainRes",action="store_true")
+	parser.add_argument("--norm", type=int, default=0, help="if normalize feature")
 	parser.add_argument("--batchsize",type=int, default=1, help="batchsize")
 	parser.add_argument('--workers', type=int, default=16)
 	parser.add_argument("--patch_size", type=int, default=256, help="crop size for localization.")
@@ -86,6 +87,7 @@ def parse_args():
 	if not os.path.exists(args.savepatch):
 		os.mkdir(args.savepatch)
 
+	args.norm = (args.norm == 1)
 	args.vis = True
 	if args.color_switch > 0:
 		args.color_switch_flag = True
@@ -191,12 +193,12 @@ def train(args):
 			best_loss = train_iter(args, loader, model, closs, optimizer, epoch, best_loss)
 
 
-def forward(frame1, frame2, model, warm_up, patch_size=None):
+def forward(frame1, frame2, model, warm_up, patch_size=None, norm=False):
 	n, c, h, w = frame1.size()
 	if warm_up:
-		output = model(frame1, frame2)
+		output = model(frame1, frame2, norm=norm)
 	else:
-		output = model(frame1, frame2, warm_up=False, patch_size=[patch_size//8, patch_size//8])
+		output = model(frame1, frame2, warm_up=False, patch_size=[patch_size//8, patch_size//8], norm=norm)
 		new_c = output[2]
 		# gt patch
 		# print("HERE2: ", frame2.size(), new_c, patch_size)
@@ -227,7 +229,7 @@ def train_iter(args, loader, model, closs, optimizer, epoch, best_loss):
 		frame2_var = frames[1].cuda()
 		
 		if epoch < args.wepoch:
-			output = forward(frame1_var, frame2_var, model, warm_up=True)
+			output = forward(frame1_var, frame2_var, model, warm_up=True, norm=args.norm)
 			color2_est = output[0]
 			aff = output[1]
 			b,x,_ = aff.size()
@@ -245,7 +247,7 @@ def train_iter(args, loader, model, closs, optimizer, epoch, best_loss):
 			if(i % args.log_interval == 0):
 				save_vis(color2_est, frame2_var, frame1_var, frame2_var, args.savepatch)
 		else:
-			output = forward(frame1_var, frame2_var, model, warm_up=False, patch_size = args.patch_size)
+			output = forward(frame1_var, frame2_var, model, warm_up=False, patch_size = args.patch_size, norm=args.norm)
 			color2_est = output[0]
 			aff = output[1]
 			new_c = output[2]
