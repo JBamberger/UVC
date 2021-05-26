@@ -1,10 +1,8 @@
 import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
 
-
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
            'resnet152']
-
 
 model_urls = {
     'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
@@ -109,7 +107,7 @@ class ResNet(nn.Module):
         self.layer1 = self._make_layer(block, 64, layers[0])
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=1)
-        if uselayer==4:
+        if uselayer == 4:
             self.layer4 = self._make_layer(block, 512, layers[3], stride=1)
         self.uselayer = uselayer
         # self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
@@ -175,9 +173,8 @@ def resnet18(pretrained=False, **kwargs):
     """
     model = ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
     if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['resnet18']), model_dir = "ae_models")
+        model.load_state_dict(model_zoo.load_url(model_urls['resnet18']), model_dir="ae_models")
     return model
-
 
 
 def resnet50(pretrained=False, **kwargs):
@@ -188,6 +185,5 @@ def resnet50(pretrained=False, **kwargs):
     """
     model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
     if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['resnet50']), model_dir = "ae_models")
+        model.load_state_dict(model_zoo.load_url(model_urls['resnet50']), model_dir="ae_models")
     return model
-
