@@ -67,7 +67,7 @@ def create_flat_grid(F_size, GPU=True):
 
     # grid is a uniform grid with left top (-1,1) and right bottom (1,1)
     # b * (h*w) * 2
-    grid = torch.nn.functional.affine_grid(theta, F_size)
+    grid = torch.nn.functional.affine_grid(theta, F_size, align_corners=True)
     grid[:, :, :, 0] = (grid[:, :, :, 0] + 1) / 2 * w
     grid[:, :, :, 1] = (grid[:, :, :, 1] + 1) / 2 * h
     grid_flat = grid.view(b, -1, 2)

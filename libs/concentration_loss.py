@@ -46,7 +46,7 @@ def create_grid(F_size, GPU=True):
 
     # grid is a uniform grid with left top (-1,1) and right bottom (1,1)
     # b * (h*w) * 2
-    grid = nn.functional.affine_grid(theta, F_size)
+    grid = nn.functional.affine_grid(theta, F_size, align_corners=True)
     if (GPU):
         grid = grid.cuda()
     return grid
