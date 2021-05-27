@@ -350,7 +350,7 @@ def coord2bbox(bbox_pre, coord, h, w, adaptive=False):
 
 
 def post_process_seg(seg_pred):
-    frame2_seg_bbox = torch.nn.functional.interpolate(seg_pred, scale_factor=8, mode='bilinear')
+    frame2_seg_bbox = torch.nn.functional.interpolate(seg_pred, scale_factor=8, mode='bilinear', align_corners=True)
     frame2_seg_bbox = norm_mask(frame2_seg_bbox.squeeze())
     _, frame2_seg_bbox = torch.max(frame2_seg_bbox, dim=0)
     return frame2_seg_bbox

@@ -124,7 +124,7 @@ def test(model, frame_list, video_dir, first_seg, seg_ori):
         que.put([frame, seg])
 
         # upsampling & argmax
-        frame_tar_avg = torch.nn.functional.interpolate(frame_tar_avg, scale_factor=8, mode='bilinear')
+        frame_tar_avg = torch.nn.functional.interpolate(frame_tar_avg, scale_factor=8, mode='bilinear', align_corners=True)
         frame_tar_avg = frame_tar_avg.squeeze()
         frame_tar_avg = norm_mask(frame_tar_avg.squeeze())
         _, frame_tar_seg = torch.max(frame_tar_avg, dim=0)

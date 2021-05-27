@@ -298,7 +298,7 @@ def test(model, frame_list, video_dir, first_seg, large_seg, first_bbox, seg_ori
             frame_tar_avg = frame_tar_avg.unsqueeze(0)
         elif (frame_tar_avg.dim() == 2):
             frame_tar_avg = frame_tar_avg.unsqueeze(0).unsqueeze(0)
-        frame_tar_up = torch.nn.functional.interpolate(frame_tar_avg, scale_factor=8, mode='bilinear')
+        frame_tar_up = torch.nn.functional.interpolate(frame_tar_avg, scale_factor=8, mode='bilinear', align_corners=True)
 
         frame_tar_up = frame_tar_up.squeeze()
         frame_tar_up = norm_mask(frame_tar_up.squeeze())
