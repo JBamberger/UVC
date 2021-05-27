@@ -17,7 +17,7 @@ import torch.nn as nn
 # Customized libraries
 from libs.test_utils import *
 from libs.model import transform
-from libs.vis_utils import norm_mask
+from libs.utils import norm_mask
 import libs.transforms_pair as transforms
 from libs.model import Model_switchGTfixdot_swCC_Res as Model
 from libs.track_utils import seg2bbox, draw_bbox, match_ref_tar

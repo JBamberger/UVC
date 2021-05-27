@@ -14,7 +14,7 @@ import torchvision.utils as vutils
 
 from libs.test_utils import *
 from libs.model import transform
-from libs.vis_utils import norm_mask
+from libs.utils import norm_mask
 import libs.transforms_pair as transforms
 from libs.model import Model_switchGTfixdot_swCC_Res as Model
 import torch.nn.functional as FUNC
