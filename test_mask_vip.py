@@ -173,18 +173,6 @@ def test(model, frame_list, first_seg):
         imwrite_indexed(out_path, np.uint8(frame_tar_seg), (ori_h, ori_w))
 
 
-def to_one_hot(y_tensor, n_dims=None):
-    if (n_dims is None):
-        n_dims = int(y_tensor.max() + 1)
-    _, h, w = y_tensor.size()
-    """ Take integer y (tensor or variable) with n dims and convert it to 1-hot representation with n+1 dims. """
-    y_tensor = y_tensor.type(torch.LongTensor).view(-1, 1)
-    n_dims = n_dims if n_dims is not None else int(torch.max(y_tensor)) + 1
-    y_one_hot = torch.zeros(y_tensor.size()[0], n_dims).scatter_(1, y_tensor, 1)
-    y_one_hot = y_one_hot.view(h, w, n_dims)
-    return y_one_hot.permute(2, 0, 1).unsqueeze(0)
-
-
 def read_seg(seg_dir):
     seg = Image.open(seg_dir)
     h, w = seg.size

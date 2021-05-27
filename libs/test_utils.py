@@ -13,6 +13,7 @@ import torch.nn.functional as FUNC
 
 # Customized libraries
 import libs.transforms_pair as transforms
+from libs.utils import to_one_hot
 
 color_palette = np.loadtxt('libs/data/palette.txt', dtype=np.uint8).reshape(-1, 3)
 
@@ -82,21 +83,6 @@ def read_frame(frame_dir, transforms, scale_size):
     pair = [frame, frame]
     transformed = list(transforms(*pair))
     return transformed[0].cuda().unsqueeze(0), ori_h, ori_w
-
-
-def to_one_hot(y_tensor, n_dims=None):
-    """
-    Take integer y (tensor or variable) with n dims &
-    convert it to 1-hot representation with n+1 dims.
-    """
-    if (n_dims is None):
-        n_dims = int(y_tensor.max() + 1)
-    _, h, w = y_tensor.size()
-    y_tensor = y_tensor.type(torch.LongTensor).view(-1, 1)
-    n_dims = n_dims if n_dims is not None else int(torch.max(y_tensor)) + 1
-    y_one_hot = torch.zeros(y_tensor.size()[0], n_dims).scatter_(1, y_tensor, 1)
-    y_one_hot = y_one_hot.view(h, w, n_dims)
-    return y_one_hot.permute(2, 0, 1).unsqueeze(0)
 
 
 def read_seg(seg_dir, scale_size):

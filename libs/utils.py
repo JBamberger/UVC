@@ -58,9 +58,14 @@ def read_frame(frame_dir, transforms):
     return transformed[0].cuda().unsqueeze(0), ori_h, ori_w
 
 
-def to_one_hot(y_tensor, n_dims=9):
-    _, h, w = y_tensor.size()
-    """ Take integer y (tensor or variable) with n dims and convert it to 1-hot representation with n+1 dims. """
+def to_one_hot(y_tensor, n_dims=None):
+    """
+    Take integer y (tensor or variable) with n dims and convert it to 1-hot representation with n+1 dims.
+    """
+    if n_dims is None:
+        n_dims = int(y_tensor.max() + 1)
+
+    h, w = y_tensor.size()[-2:]
     y_tensor = y_tensor.type(torch.LongTensor).view(-1, 1)
     n_dims = n_dims if n_dims is not None else int(torch.max(y_tensor)) + 1
     y_one_hot = torch.zeros(y_tensor.size()[0], n_dims).scatter_(1, y_tensor, 1)
@@ -82,7 +87,7 @@ def read_seg(seg_dir, crop_size):
 
     seg = torch.from_numpy(np.asarray(seg)).view(1, 1, w, h)
     seg = FUNC.interpolate(seg, (tw // 8, th // 8), mode='nearest')
-    return to_one_hot(seg)
+    return to_one_hot(seg, n_dims=9)
 
 
 def create_transforms(crop_size):
