@@ -81,7 +81,7 @@ def read_seg(seg_dir, crop_size):
         tw = int((tw // 64) * 64)
 
     seg = torch.from_numpy(np.asarray(seg)).view(1, 1, w, h)
-    seg = FUNC.interpolate(seg, (tw // 8, th // 8), mode='nearest', align_corners=True)
+    seg = FUNC.interpolate(seg, (tw // 8, th // 8), mode='nearest')
     return to_one_hot(seg)
 
 
