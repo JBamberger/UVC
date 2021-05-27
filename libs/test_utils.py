@@ -101,7 +101,7 @@ def read_seg(seg_dir, scale_size):
         tw = scale_size[1]
         th = scale_size[0]
 
-    seg_ori = np.asarray(seg).reshape((w, h))
+    seg_ori = np.asarray(seg).reshape((w, h)).copy()
 
     seg_ori_pth = torch.from_numpy(seg_ori).view(1, 1, w, h)
     small_seg = FUNC.interpolate(seg_ori_pth, (tw // 8, th // 8), mode='nearest')
