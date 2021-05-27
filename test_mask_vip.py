@@ -165,12 +165,13 @@ def test(model, frame_list, first_seg):
         que.put([frame, seg])
 
         # upsampling & argmax
-        frame_tar_avg = torch.nn.functional.interpolate(frame_tar_avg, scale_factor=8, mode='bilinear', align_corners=True)
+        frame_tar_avg = torch.nn.functional.interpolate(frame_tar_avg, scale_factor=8, mode='bilinear',
+                                                        align_corners=True)
         frame_tar_avg = norm_mask(frame_tar_avg.squeeze())
         _, frame_tar_seg = torch.max(frame_tar_avg, dim=0)
 
         frame_tar_seg = frame_tar_seg.squeeze().numpy().astype(np.uint8)
-        imwrite_indexed(out_path, np.uint8(frame_tar_seg), (ori_h, ori_w))
+        imwrite_indexed(out_path, np.uint8(frame_tar_seg), size=(ori_w, ori_h))
 
 
 def read_seg(seg_dir):
@@ -231,9 +232,9 @@ if (__name__ == '__main__'):
         os.makedirs(video_folder, exist_ok=True)
 
         seg_vis = Image.open(seg_dir)
-        seg_vis = np.array(seg_vis)
+        seg_vis = np.array(seg_vis, dtype=np.uint8)
         out_path = os.path.join(video_folder, 'output_001.png')
-        imwrite_indexed(out_path, np.uint8(seg_vis))
+        imwrite_indexed(out_path, seg_vis)
 
         first_seg_nm = seg_dir.split('/')[-1]
         shutil.copy(seg_dir, os.path.join(video_folder, first_seg_nm))

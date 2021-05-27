@@ -132,7 +132,7 @@ def test(model, frame_list, video_dir, first_seg, seg_ori):
         # saving to disk
         frame_tar_seg = frame_tar_seg.squeeze().cpu().numpy().astype(np.uint8)
         output_path = os.path.join(video_folder, frame_nm.split('.')[0] + '_seg.png')
-        imwrite_indexed(out_path, frame_tar_seg, size=(ori_h, ori_w))
+        imwrite_indexed(out_path, frame_tar_seg, size=(ori_w, ori_h))
 
 
 ############################## main function ##############################

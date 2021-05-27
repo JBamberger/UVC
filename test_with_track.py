@@ -305,7 +305,7 @@ def test(model, frame_list, video_dir, first_seg, large_seg, first_bbox, seg_ori
         _, frame_tar_seg = torch.max(frame_tar_up.squeeze(), dim=0)
 
         frame_tar_seg = frame_tar_seg.squeeze().cpu().numpy().astype(np.uint8)
-        imwrite_indexed(out_path, frame_tar_seg, size=(ori_h, ori_w))
+        imwrite_indexed(out_path, frame_tar_seg, size=(ori_w, ori_h))
 
         if (que.qsize() == args.pre_num):
             que.get()
