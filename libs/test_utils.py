@@ -1,13 +1,15 @@
 # OS libraries
 import os
+
+import PIL.Image
 import cv2
 import glob
-import scipy.misc
 import numpy as np
 from PIL import Image
 
 # Pytorch
 import torch
+import torch.nn.functional as FUNC
 
 # Customized libraries
 import libs.transforms_pair as transforms
@@ -112,23 +114,24 @@ def read_seg(seg_dir, scale_size):
     else:
         tw = scale_size[1]
         th = scale_size[0]
-    seg = np.asarray(seg).reshape((w, h, 1))
-    seg_ori = np.squeeze(seg)
-    small_seg = scipy.misc.imresize(seg_ori, (tw // 8, th // 8), "nearest", mode="F")
-    large_seg = scipy.misc.imresize(seg_ori, (tw, th), "nearest", mode="F")
 
-    t = []
-    t.extend([transforms.ToTensor()])
-    trans = transforms.Compose(t)
-    pair = [large_seg, small_seg]
-    transformed = list(trans(*pair))
-    large_seg = transformed[0]
-    small_seg = transformed[1]
+    seg_ori = np.asarray(seg).reshape((w, h))
+
+    seg_ori_pth = torch.from_numpy(seg_ori).view(1, 1, w, h)
+    small_seg = FUNC.interpolate(seg_ori_pth, (tw // 8, th // 8), mode='nearest', align_corners=True)
+    large_seg = FUNC.interpolate(seg_ori_pth, (tw, th), mode='nearest', align_corners=True)
+
     return to_one_hot(large_seg), to_one_hot(small_seg), seg_ori
 
 
-def imwrite_indexed(filename, array):
-    """ Save indexed png for DAVIS."""
+def imwrite_indexed(filename, array, size=None):
+    """
+    Save indexed png for DAVIS.
+    """
+
+    if size is not None:
+        array = np.array(Image.fromarray(array).resize(size, resample=PIL.Image.NEAREST))
+
     if np.atleast_3d(array).shape[2] != 1:
         raise Exception("Saving indexed PNGs requires 2D array.")
 

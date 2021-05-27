@@ -6,7 +6,6 @@ import queue
 import torch
 import shutil
 import argparse
-import scipy.misc
 import numpy as np
 import torch.nn as nn
 from tqdm import tqdm
@@ -18,6 +17,7 @@ from libs.model import transform
 from libs.vis_utils import norm_mask
 import libs.transforms_pair as transforms
 from libs.model import Model_switchGTfixdot_swCC_Res as Model
+import torch.nn.functional as FUNC
 
 
 def parse_args():
@@ -169,10 +169,8 @@ def test(model, frame_list, first_seg):
         frame_tar_avg = norm_mask(frame_tar_avg.squeeze())
         _, frame_tar_seg = torch.max(frame_tar_avg, dim=0)
 
-        frame_tar_seg = frame_tar_seg.squeeze().numpy()
-        frame_tar_seg = np.array(frame_tar_seg, dtype=np.uint8)
-        frame_tar_seg = scipy.misc.imresize(frame_tar_seg, (ori_h, ori_w), "nearest", mode="F")
-        imwrite_indexed(out_path, np.uint8(frame_tar_seg))
+        frame_tar_seg = frame_tar_seg.squeeze().numpy().astype(np.uint8)
+        imwrite_indexed(out_path, np.uint8(frame_tar_seg), (ori_h, ori_w))
 
 
 def to_one_hot(y_tensor, n_dims=None):
@@ -202,16 +200,10 @@ def read_seg(seg_dir):
     else:
         tw = args.scale_size[1]
         th = args.scale_size[0]
-    seg = np.asarray(seg).reshape((w, h, 1))
-    seg = np.squeeze(seg)
-    seg = scipy.misc.imresize(seg, (tw // 8, th // 8), "nearest", mode="F")
 
-    t = []
-    t.extend([transforms.ToTensor()])
-    trans = transforms.Compose(t)
-    pair = [seg, seg]
-    transformed = list(trans(*pair))
-    seg = transformed[0]
+    seg = torch.from_numpy(np.asarray(seg)).view(1, 1, w, h)
+    seg = FUNC.interpolate(seg, (tw // 8, th // 8), mode='nearest')
+
     return to_one_hot(seg)
 
 

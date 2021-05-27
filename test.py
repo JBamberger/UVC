@@ -3,7 +3,6 @@ import os
 import copy
 import queue
 import argparse
-import scipy.misc
 import numpy as np
 from tqdm import tqdm
 
@@ -131,12 +130,9 @@ def test(model, frame_list, video_dir, first_seg, seg_ori):
         _, frame_tar_seg = torch.max(frame_tar_avg, dim=0)
 
         # saving to disk
-        frame_tar_seg = frame_tar_seg.squeeze().cpu().numpy()
-        frame_tar_seg = np.array(frame_tar_seg, dtype=np.uint8)
-        frame_tar_seg = scipy.misc.imresize(frame_tar_seg, (ori_h, ori_w), "nearest")
-
+        frame_tar_seg = frame_tar_seg.squeeze().cpu().numpy().astype(np.uint8)
         output_path = os.path.join(video_folder, frame_nm.split('.')[0] + '_seg.png')
-        imwrite_indexed(out_path, frame_tar_seg)
+        imwrite_indexed(out_path, frame_tar_seg, size=(ori_h, ori_w))
 
 
 ############################## main function ##############################

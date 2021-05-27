@@ -2,7 +2,7 @@ import os
 import cv2
 import glob
 import torch
-import scipy.misc
+import torch.nn.functional as FUNC
 import numpy as np
 from PIL import Image
 import libs.transforms_multi as transforms
@@ -79,11 +79,9 @@ def read_seg(seg_dir, crop_size):
         th = crop_size
         tw = (th * w) / h
         tw = int((tw // 64) * 64)
-    seg = np.asarray(seg).reshape((w, h, 1))
-    seg = np.squeeze(seg)
-    seg = scipy.misc.imresize(seg, (tw // 8, th // 8), "nearest", mode="F")
 
-    seg = torch.from_numpy(seg).view(1, tw // 8, th // 8)
+    seg = torch.from_numpy(np.asarray(seg)).view(1, 1, w, h)
+    seg = FUNC.interpolate(seg, (tw // 8, th // 8), mode='nearest', align_corners=True)
     return to_one_hot(seg)
 
 
