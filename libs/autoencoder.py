@@ -143,7 +143,7 @@ class decoder3(nn.Module):
         out = self.reflecPad11(out)
         out = self.conv11(out)
         if not self.cls:
-            out = F.tanh(out)
+            out = torch.tanh(out)
         return out
 
 
