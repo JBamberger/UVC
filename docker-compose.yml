@@ -1,0 +1,27 @@
+version: '3.2'
+services:
+  application:
+    image: uvc-dev
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    command: python test.py -d /workspace/DAVIS/ -s 480
+#    ports:
+#    - 8888:8888
+    environment:
+      - NVIDIA_DISABLE_REQUIRE=1
+    volumes:
+      - type: bind
+        target: /workspace/DAVIS/
+        source: K:/datasets/DAVIS/DAVIS2017/
+        read_only: true
+      - type: bind
+        target: /workspace/results/
+        source: K:/UVC_results/
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: [ '0' ]
+              capabilities: [ gpu ]
