@@ -202,14 +202,12 @@ def train(args):
 
 
 def forward(frame1, frame2, model, warm_up, patch_size=None, norm=False):
-    n, c, h, w = frame1.size()
     if warm_up:
         output = model(frame1, frame2, norm=norm)
     else:
         output = model(frame1, frame2, warm_up=False, patch_size=[patch_size // 8, patch_size // 8], norm=norm)
         new_c = output[2]
         # gt patch
-        # print("HERE2: ", frame2.size(), new_c, patch_size)
         color2_gt = diff_crop(frame2, new_c[:, 0], new_c[:, 2], new_c[:, 1], new_c[:, 3],
                               patch_size, patch_size)
         output.append(color2_gt)
@@ -217,7 +215,6 @@ def forward(frame1, frame2, model, warm_up, patch_size=None, norm=False):
 
 
 def train_iter(args, loader, model, closs, optimizer, epoch, best_loss):
-    losses = AverageMeter()
     batch_time = AverageMeter()
     losses = AverageMeter()
     c_losses = AverageMeter()

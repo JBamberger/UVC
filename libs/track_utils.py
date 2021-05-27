@@ -59,7 +59,9 @@ class BBox():
 
 def to_one_hot(y_tensor, n_dims=9):
     _, h, w = y_tensor.size()
-    """ Take integer y (tensor or variable) with n dims and convert it to 1-hot representation with n+1 dims. """
+    """
+    Take integer y (tensor or variable) with n dims and convert it to 1-hot representation with n+1 dims.
+    """
     y_tensor = y_tensor.type(torch.LongTensor).view(-1, 1)
     n_dims = n_dims if n_dims is not None else int(torch.max(y_tensor)) + 1
     y_one_hot = torch.zeros(y_tensor.size()[0], n_dims).scatter_(1, y_tensor, 1)
@@ -101,32 +103,17 @@ def seg2bbox_v2(seg, bbox_pre):
     bbox[0].upscale(0.125)
     _, seg_int = torch.max(seg, dim=0)
     for cnt in range(1, c):  # rule out background label
-        # seg_cnt = seg[cnt]
         seg_cnt = (seg_int == cnt) * 1
         # x * 2
         fg_idx = seg_cnt.nonzero().float()
 
         if (fg_idx.numel() > 0):
-            # seg_vis = seg_cnt.unsqueeze(0)
             fg_idx = torch.flip(fg_idx, (0, 1))
-            # im = torch.cat((seg_vis, seg_vis, seg_vis), dim=0).permute(1,2,0).numpy()
-            # im = im * 255
 
             bbox_tmp = copy.deepcopy(bbox_pre[cnt])
             bbox_tmp.upscale(8)
-            # im = draw_bbox(im, bbox_tmp, (0,255,0))
             bbox[cnt] = coords2bbox_scale(fg_idx, h, w, bbox_tmp, margin=0.6, bandwidth=20)
 
-            # vis = draw_bbox(im, bbox[cnt], (0,0,255))
-
-            # cv2.imwrite('vis.png',vis)
-            # center = mean_shift_center(fg_idx.unsqueeze(0))
-            # left = fg_idx[:,1].min()
-            # right = fg_idx[:,1].max()
-            # top = fg_idx[:,0].min()
-            # bottom = fg_idx[:,0].max()
-
-            # bbox[cnt] = BBox(left, right, top, bottom, 0.4, h, w)
             bbox[cnt].upscale(0.125)
         else:
             bbox[cnt] = None
@@ -296,11 +283,7 @@ def clean_seg(seg, bbox, threshold):
             fgs[cnt] = fg[:, [1, 0]].float()
         else:
             fgs[cnt] = None
-    # center_h = (bbox[1].top  + bbox[1].bottom)/2
-    # center_w = (bbox[1].left + bbox[1].right)/2
-    # scatter_point(fgs[1], 'before.png', w, h, torch.Tensor([center_w, center_h]))
     fgs = clean_coords(fgs, bbox, threshold)
-    # scatter_point(fgs[1], 'after.png', w, h, torch.Tensor([center_w, center_h]))
     seg_new = torch.zeros(seg.size())
     for cnt, fg in fgs.items():
         if (fg is not None):
@@ -340,8 +323,6 @@ def coord2bbox(bbox_pre, coord, h, w, adaptive=False):
 
     if adaptive:
         center = torch.mean(coord, dim=0)
-        # bb_height = torch.mean(torch.abs(coord[:,1] - center[1]), dim = 0) * 8
-        # bb_width = torch.mean(torch.abs(coord[:,0] - center[0]), dim = 0) * 8
         dis_h = coord[:, 1] - center[1]
         dis_w = coord[:, 0] - center[0]
 
@@ -350,8 +331,6 @@ def coord2bbox(bbox_pre, coord, h, w, adaptive=False):
 
         dis_w = torch.mean(dis_w * dis_w, dim=0)
         bb_width = (dis_w ** 0.5) * 8
-        # bb_height = coord[:,1].max() - coord[:,1].min()
-        # bb_width  = coord[:,0].max() - coord[:,0].min()
 
         # the adaptive method is sentitive to outliers, let's assume there's no dramatical change within
         # short range, so the height should not grow larger than 1.2 times height in previous frame
@@ -406,13 +385,11 @@ def scatter_point(coord, name, w, h, center=None):
     ax.scatter(coord[:, 0], h - coord[:, 1])
     ax.scatter(center[0], h - center[1], marker='^')
 
-    """
-    for cnt in range(3):
-        x = coord[idx_[cnt],0]
-        y = h - coord[idx_[cnt],1]
-        ax.scatter(x, y, marker='o', c='r')
-        ax.annotate("{:2f}".format(dis[idx_[cnt]].numpy()), (x, y))
-    """
+    # for cnt in range(3):
+    #     x = coord[idx_[cnt],0]
+    #     y = h - coord[idx_[cnt],1]
+    #     ax.scatter(x, y, marker='o', c='r')
+    #     ax.annotate("{:2f}".format(dis[idx_[cnt]].numpy()), (x, y))
 
     plt.savefig(name)
     plt.clf()
@@ -470,7 +447,6 @@ def match_ref_tar(F_ref, F_tar, seg_ref, temp):
     grid = create_grid(F_ref.unsqueeze(0).size()).squeeze()
     grid[:, :, 0] = (grid[:, :, 0] + 1) / 2 * w
     grid[:, :, 1] = (grid[:, :, 1] + 1) / 2 * h
-    # grid_flat: (h * w) * 2
     grid_flat = grid.view(-1, 2)
 
     for cnt in range(seg_ref.size(0)):
@@ -513,7 +489,6 @@ def weighted_center(coords, center):
     dis_y = np.sqrt(np.power(coords[:, :, 1] - center[:, :, 1], 2))
     weight_y = 1 / dis_y
     weight_y = weight_y / np.sum(weight_y)
-    # weight_y = dis_y / np.sum(dis_y)
 
     new_x = np.sum(weight_x * coords[:, :, 0])
     new_y = np.sum(weight_y * coords[:, :, 1])
@@ -586,10 +561,7 @@ def coords2bbox_scale(coords, h_tar, w_tar, bbox_pre, margin, bandwidth):
      - h_tar: target image height
      - w_tar: target image widthg
     """
-    # b = coords.size(0)
     b = 1
-    # center = torch.mean(coords, dim=0) # b * 2
-    # center = center.view(1,2)
     center = mean_shift_center(coords.numpy(), bandwidth)
     center_repeat = center.repeat(coords.size(0), 1)
 
@@ -597,38 +569,17 @@ def coords2bbox_scale(coords, h_tar, w_tar, bbox_pre, margin, bandwidth):
     dis_x = torch.mean(dis_x, dim=0).detach()
     dis_y = torch.sqrt(torch.pow(coords[:, 1] - center_repeat[:, 1], 2))
     dis_y = torch.mean(dis_y, dim=0).detach()
-    # dis_x = (bbox_pre.right - bbox_pre.left)/2.0
-    # dis_y = (bbox_pre.bottom - bbox_pre.top)/2.0
 
     left = (center[:, 0] - dis_x * 2).view(b, 1)
     right = (center[:, 0] + dis_x * 2).view(b, 1)
     top = (center[:, 1] - dis_y * 2).view(b, 1)
     bottom = (center[:, 1] + dis_y * 2).view(b, 1)
-    # left = (center[:,1] - dis_x).view(b,1)
-    # right = (center[:,1] + dis_x).view(b,1)
-    # top = (center[:,0] - dis_y).view(b,1)
-    # bottom = (center[:,0] + dis_y).view(b,1)
 
     bbox_tar_ = BBox(left=int(max(left, 0)),
                      right=int(min(right, w_tar)),
                      top=int(max(top, 0)),
                      bottom=int(min(bottom, h_tar)),
                      margin=margin, h=h_tar, w=w_tar)
-
-    # the new bbox should fall into a certain range of previous bbox
-    """
-    bbox_tar_.left = int(max((bbox_pre.left + 1) * 0.9, bbox_tar_.left))
-    bbox_tar_.left = int(min((bbox_pre.left + 1) * 1.1, bbox_tar_.left))
-
-    bbox_tar_.right = int(max(bbox_pre.right * 0.9, bbox_tar_.right))
-    bbox_tar_.right = int(min(bbox_pre.right * 1.1, bbox_tar_.right))
-
-    bbox_tar_.top = int(max((bbox_pre.top + 1) * 0.9, bbox_tar_.top))
-    bbox_tar_.top = int(min((bbox_pre.top + 1) * 1.1, bbox_tar_.top))
-
-    bbox_tar_.bottom = int(max(bbox_pre.bottom * 0.9, bbox_tar_.bottom))
-    bbox_tar_.bottom = int(min(bbox_pre.bottom * 1.1, bbox_tar_.bottom))
-    """
 
     return bbox_tar_
 
@@ -675,9 +626,6 @@ def bbox_in_tar_scale(coords_tar, bbox_ref, h, w):
             coord = coord.cpu()
 
             bbox_tar_ = coords2bbox_scale(coord, h, w, bbox_cnt, margin=1, bandwidth=5)
-            # coord = coord_wrt_bbox(coord, bbox_tar_)
-            # new_coords[cnt] = coord
-            # bbox_tar_ = coords2bbox_scale(coord, h, w, bbox_tar_, margin=0.6, bandwidth=5)
         else:
             bbox_tar_ = None
 
@@ -894,176 +842,3 @@ def bbox_next_frame_v4(F_first, F_pre, seg_pre, seg_first, F_tar, bbox_first,
 
     seg_post = post_process_seg(seg_pred.unsqueeze(0))
     return seg_pred, seg_post, bbox_tar
-
-
-############################# depreciated code, keep for safety ########################
-"""
-def bbox_next_frame(F_ref, seg_ref, F_tar, bbox, temp):
-    # b * h * w * 2
-    b, c, h, w = F_ref.size()
-    grid = create_grid(F_ref.size()).squeeze()
-    grid[:,:,0] = (grid[:,:,0]+1)/2 * w
-    grid[:,:,1] = (grid[:,:,1]+1)/2 * h
-    # grid_flat: (h * w) * 2
-    grid_flat = grid.view(-1,2)
-    seg_ref = seg_ref.squeeze()
-    F_ref = F_ref.squeeze()
-    F_ref_flat = F_ref.view(c,-1)
-    F_tar = F_tar.squeeze()
-    F_tar_flat = F_tar.view(c,-1)
-    bbox_next = []
-    seg_pred = torch.zeros(seg_ref.size())
-    for i in range(0,seg_ref.size(0)):
-        seg_cnt = seg_ref[i,:,:].contiguous().view(-1)
-        if(seg_cnt.max() == 0):
-            continue
-        bbox_cnt = bbox[i]
-        if(i > 0):
-            fg_idx = seg_cnt.nonzero()
-            # take pixels of this instance out
-            F_ref_cnt_flat = F_ref_flat[:,fg_idx].squeeze()
-
-            # affinity between patch and target frame
-            # aff: (hh * ww, h * w)
-            aff = torch.mm(F_ref_cnt_flat.permute(1,0), F_tar_flat)
-            aff = torch.nn.functional.softmax(aff*temp, dim = 1)
-            # coord of this patch in next frame: (hh*ww) * 2
-            coord = torch.mm(aff, grid_flat)
-            avg_h = calc_center(coord[:,1], mode='mass').cpu().long()
-            avg_w = calc_center(coord[:,0], mode='mass').cpu().long()
-            bb_width = bbox_cnt.right - bbox_cnt.left
-            bb_height = bbox_cnt.bottom - bbox_cnt.top
-            bbox_next_ = BBox(left = max(avg_w - bb_width/2,0),
-                                  right = min(avg_w + bb_width/2, w),
-                                  top = max(avg_h - bb_height/2,0),
-                                  bottom = min(avg_h + bb_height/2,h),
-                                  margin = 0, h = h, w = w)
-        else:
-            bbox_next_ = BBox(left = 0,
-                              right = w,
-                              top = 0,
-                              bottom = h,
-                              margin = 0, h = h, w = w)
-        bbox_next.append(bbox_next_)
-
-        # feature of patch in the next frame
-        F_tar_box = F_tar[:, bbox_next_.top:bbox_next_.bottom, bbox_next_.left:bbox_next_.right]
-        F_ref_box = F_ref[:, bbox_cnt.top:bbox_cnt.bottom, bbox_cnt.left:bbox_cnt.right]
-        F_tar_box_flat = F_tar_box.contiguous().view(c,-1)
-        F_ref_box_flat = F_ref_box.contiguous().view(c,-1)
-
-        # affinity between two patches
-        aff = torch.mm(F_ref_box_flat.permute(1,0), F_tar_box_flat)
-        aff = torch.nn.functional.softmax(aff * temp, dim=0)
-        # transfer segmentation from patch1 to patch2
-        seg_ref_box = seg_ref[i, bbox_cnt.top:bbox_cnt.bottom, bbox_cnt.left:bbox_cnt.right]
-        aff = aff.cpu()
-        seg_ref_box_flat = seg_ref_box.contiguous().view(-1)
-        seg_tar_box = torch.mm(seg_ref_box_flat.unsqueeze(0), aff).squeeze()
-        seg_tar_box = seg_tar_box.view(F_tar_box.size(1),F_tar_box.size(2))
-
-        seg_pred[i,bbox_next_.top:bbox_next_.bottom, bbox_next_.left:bbox_next_.right] = seg_tar_box
-
-    #seg_pred[0,:,:] = 1 - torch.sum(seg_pred[1:,:,:],dim=0)
-
-    return seg_pred.unsqueeze(0), bbox_next
-def bbox_next_frame_rec(F_first, F_ref, seg_ref, seg_first,
-                        F_tar, bbox_first, bbox, temp):
-    # b * h * w * 2
-    b, c, h, w = F_ref.size()
-    seg_ref = seg_ref.squeeze()
-    F_ref = F_ref.squeeze()
-    F_ref_flat = F_ref.view(c,-1)
-    F_tar = F_tar.squeeze()
-    F_tar_flat = F_tar.view(c,-1)
-    F_first = F_first.squeeze()
-    bbox_next = []
-    seg_pred = torch.zeros(seg_ref.size())
-    seg_first = seg_first.squeeze()
-    for i in range(0,seg_ref.size(0)):
-        seg_cnt = seg_ref[i,:,:].contiguous().view(-1)
-        if(seg_cnt.max() == 0):
-            continue
-        if(i > len(bbox)-1):
-            continue
-        bbox_cnt = bbox[i]
-        bbox_first_cnt = bbox_first[i]
-        if(i > 0):
-            fg_idx = seg_cnt.nonzero()
-            F_ref_cnt_flat = F_ref_flat[:,fg_idx].squeeze()
-
-            # affinity between patch and target frame
-            if(F_ref_cnt_flat.dim() < 2):
-                # some small objects may miss
-                continue
-            aff = torch.mm(F_ref_cnt_flat.permute(1,0), F_tar_flat)
-            aff = torch.nn.functional.softmax(aff*temp, dim = 1)
-            coord = torch.mm(aff, grid_flat)
-            #coord = transform_topk(aff.unsqueeze(0), grid.unsqueeze(0), dim=2, k=20)
-            avg_h = calc_center(coord[:,1], mode='mass').cpu()
-            avg_w = calc_center(coord[:,0], mode='mass').cpu()
-            bb_width  = float(bbox_first_cnt.right  - bbox_first_cnt.left)
-            bb_height = float(bbox_first_cnt.bottom - bbox_first_cnt.top)
-            coord = coord.cpu()
-
-            left = avg_w - bb_width/2.0
-            right = avg_w + bb_width/2.0
-            top = avg_h - bb_height/2.0
-            bottom = avg_h + bb_height/2.0
-
-            bbox_next_ = BBox(left   = int(max(left, 0)),
-                              right  = int(min(right, w)),
-                              top    = int(max(top, 0)),
-                              bottom = int(min(bottom, h)),
-                              margin = 0, h = h, w = w)
-        else:
-            bbox_next_ = BBox(left = 0,
-                              right = w,
-                              top = 0,
-                              bottom = h,
-                              margin = 0, h = h, w = w)
-
-        bbox_next.append(bbox_next_)
-
-        # feature of patch in the next frame
-        F_tar_box = F_tar[:, bbox_next_.top:bbox_next_.bottom, bbox_next_.left:bbox_next_.right]
-        F_ref_box = F_first[:, bbox_first_cnt.top:bbox_first_cnt.bottom, bbox_first_cnt.left:bbox_first_cnt.right]
-        F_tar_box_flat = F_tar_box.contiguous().view(c,-1)
-        F_ref_box_flat = F_ref_box.contiguous().view(c,-1)
-    print('================')
-
-        # affinity between two patches
-        aff = torch.mm(F_ref_box_flat.permute(1,0), F_tar_box_flat)
-        aff = torch.nn.functional.softmax(aff * temp, dim=0)
-        # transfer segmentation from patch1 to patch2
-        seg_ref_box = seg_first[i, bbox_first_cnt.top:bbox_first_cnt.bottom, bbox_first_cnt.left:bbox_first_cnt.right]
-        aff = aff.cpu()
-        seg_ref_box_flat = seg_ref_box.contiguous().view(-1)
-        seg_tar_box = torch.mm(seg_ref_box_flat.unsqueeze(0), aff).squeeze()
-        #seg_tar_box = transform_topk(aff.unsqueeze(0), seg_ref_box.contiguous().unsqueeze(0).unsqueeze(0))
-        seg_tar_box = seg_tar_box.view(F_tar_box.size(1),F_tar_box.size(2))
-
-        seg_pred[i,bbox_next_.top:bbox_next_.bottom, bbox_next_.left:bbox_next_.right] = seg_tar_box
-
-    return seg_pred.unsqueeze(0), bbox_next
-
-def transform_topk(aff, frame1, k=20, dim=1):
-    b,c,h,w = frame1.size()
-    b, N1, N2 = aff.size()
-    # b * 20 * N
-    tk_val, tk_idx = torch.topk(aff, dim = dim, k=k)
-    # b * N
-    tk_val_min,_ = torch.min(tk_val,dim=dim)
-    if(dim == 1):
-        tk_val_min = tk_val_min.view(b,1,N2)
-    else:
-        tk_val_min = tk_val_min.view(b,N1,1)
-    aff[tk_val_min > aff] = 0
-    frame1 = frame1.view(b,c,-1)
-    if(dim == 1):
-        frame2 = torch.bmm(frame1, aff)
-        return frame2
-    else:
-        frame2 = torch.bmm(aff, frame1.permute(0,2,1))
-        return frame2.squeeze()
-"""

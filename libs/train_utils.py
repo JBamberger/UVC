@@ -71,7 +71,6 @@ def save_vis_ae(pred, gt, savepath):
         im = pred[cnt].cpu().detach() * 128 + 128
         im = im.numpy().transpose(1, 2, 0)
         im_pred = cv2.cvtColor(np.array(im, dtype=np.uint8), cv2.COLOR_LAB2BGR)
-        # im_pred = np.clip(im_bgr, 0, 255)
 
         im = gt[cnt].cpu().detach() * 128 + 128
         im = im.numpy().transpose(1, 2, 0)

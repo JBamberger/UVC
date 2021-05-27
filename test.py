@@ -116,7 +116,7 @@ def test(model, frame_list, video_dir, first_seg, seg_ori):
         out_path = os.path.join(video_folder, frame_nm)
 
         # pop out oldest frame if neccessary
-        if (que.qsize() == args.pre_num):
+        if que.qsize() == args.pre_num:
             que.get()
         # push current results into queue
         seg = copy.deepcopy(frame_tar_avg)
@@ -137,7 +137,7 @@ def test(model, frame_list, video_dir, first_seg, seg_ori):
 
 ############################## main function ##############################
 
-if (__name__ == '__main__'):
+if __name__ == '__main__':
     args = parse_args()
     with open(args.val_txt) as f:
         lines = f.readlines()

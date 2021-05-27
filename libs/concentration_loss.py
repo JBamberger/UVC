@@ -57,7 +57,7 @@ def im2col(img, win_len, stride=1):
     INPUTS:
      - img: a b*c*h*w feature tensor.
      - win_len: each pixel compares with its neighbors within a
-                            (win_len*2+1) * (win_len*2+1) window.
+                (win_len*2+1) * (win_len*2+1) window.
     OUTPUT:
      - result: a b*c*(h*w)*(win_len*2+1)^2 tensor, unfolded neighbors for each pixel
     """
