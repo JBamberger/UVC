@@ -2,7 +2,7 @@ version: '3.2'
 services:
   application:
     image: uvc-dev
-    command: python test.py -d /workspace/DAVIS/ -s 480
+    command: python test_with_track.py -d /workspace/DAVIS/ -s 480
     environment:
       - NVIDIA_DISABLE_REQUIRE=1
     volumes:
