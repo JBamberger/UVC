@@ -1,15 +1,80 @@
+import collections
 import numbers
 import random
-import scipy.io
-import cv2
-import numpy as np
-from PIL import Image, ImageOps, ImageEnhance, PILLOW_VERSION
 
-try:
-    import accimage
-except ImportError:
-    accimage = None
+import cv2
 import torch
+
+from libs.transform_utils import rotatenumpy, pad_image, resize
+
+
+class Scale(object):
+    """docstring for Scale"""
+
+    def __init__(self, short_side):
+        self.short_side = short_side
+
+    def __call__(self, pair_0, pair_1):
+        if (type(self.short_side) == int):
+            h, w, c = pair_0.shape
+            if (h > w):
+                tw = self.short_side
+                th = (tw * h) / w
+                th = int((th // 64) * 64)
+            else:
+                th = self.short_side
+                tw = (th * w) / h
+                tw = int((tw // 64) * 64)
+        elif (type(self.short_side) == list):
+            th = self.short_side[0]
+            tw = self.short_side[1]
+
+        interpolation = cv2.INTER_NEAREST
+        pair_0 = cv2.resize(pair_0, dsize=(tw, th), interpolation=interpolation)
+        pair_1 = cv2.resize(pair_1, dsize=(tw, th), interpolation=interpolation)
+
+        return pair_0, pair_1
+
+
+class RandomCrop(object):
+    """for pair of frames"""
+
+    def __init__(self, size):
+        if isinstance(size, numbers.Number):
+            self.size = (int(size), int(size))
+        else:
+            self.size = size
+
+    def __call__(self, pair_0, pair_1):
+        h, w, c = pair_0.shape
+        th, tw = self.size
+        top = bottom = left = right = 0
+
+        if w == tw and h == th:
+            return pair_0, pair_1
+
+        if w < tw:
+            left = (tw - w) // 2
+            right = tw - w - left
+        if h < th:
+            top = (th - h) // 2
+            bottom = th - h - top
+        if left > 0 or right > 0 or top > 0 or bottom > 0:
+            pair_0 = pad_image(
+                'reflection', pair_0, top, bottom, left, right)
+            pair_1 = pad_image(
+                'reflection', pair_1, top, bottom, left, right)
+
+        if w > tw:
+            x1 = random.randint(0, w - tw)
+            pair_0 = pair_0[:, x1:x1 + tw]
+            pair_1 = pair_1[:, x1:x1 + tw]
+        if h > th:
+            y1 = random.randint(0, h - th)
+            pair_0 = pair_0[y1:y1 + th]
+            pair_1 = pair_1[y1:y1 + th]
+
+        return pair_0, pair_1
 
 
 class CenterCrop(object):
@@ -55,47 +120,6 @@ class CenterCrop(object):
         return frames
 
 
-class RandomCrop(object):
-    """for pair of frames"""
-
-    def __init__(self, size):
-        if isinstance(size, numbers.Number):
-            self.size = (int(size), int(size))
-        else:
-            self.size = size
-
-    def __call__(self, pair_0, pair_1):
-        h, w, c = pair_0.shape
-        th, tw = self.size
-        top = bottom = left = right = 0
-
-        if w == tw and h == th:
-            return pair_0, pair_1
-
-        if w < tw:
-            left = (tw - w) // 2
-            right = tw - w - left
-        if h < th:
-            top = (th - h) // 2
-            bottom = th - h - top
-        if left > 0 or right > 0 or top > 0 or bottom > 0:
-            pair_0 = pad_image(
-                'reflection', pair_0, top, bottom, left, right)
-            pair_1 = pad_image(
-                'reflection', pair_1, top, bottom, left, right)
-
-        if w > tw:
-            x1 = random.randint(0, w - tw)
-            pair_0 = pair_0[:, x1:x1 + tw]
-            pair_1 = pair_1[:, x1:x1 + tw]
-        if h > th:
-            y1 = random.randint(0, h - th)
-            pair_0 = pair_0[y1:y1 + th]
-            pair_1 = pair_1[y1:y1 + th]
-
-        return pair_0, pair_1
-
-
 class RandomScale(object):
     """docstring for RandomScale"""
 
@@ -115,34 +139,6 @@ class RandomScale(object):
             interpolation = cv2.INTER_LANCZOS4
         elif ratio > 1:
             interpolation = cv2.INTER_CUBIC
-        pair_0 = cv2.resize(pair_0, dsize=(tw, th), interpolation=interpolation)
-        pair_1 = cv2.resize(pair_1, dsize=(tw, th), interpolation=interpolation)
-
-        return pair_0, pair_1
-
-
-class Scale(object):
-    """docstring for Scale"""
-
-    def __init__(self, short_side):
-        self.short_side = short_side
-
-    def __call__(self, pair_0, pair_1):
-        if (type(self.short_side) == int):
-            h, w, c = pair_0.shape
-            if (h > w):
-                tw = self.short_side
-                th = (tw * h) / w
-                th = int((th // 64) * 64)
-            else:
-                th = self.short_side
-                tw = (th * w) / h
-                tw = int((tw // 64) * 64)
-        elif (type(self.short_side) == list):
-            th = self.short_side[0]
-            tw = self.short_side[1]
-
-        interpolation = cv2.INTER_NEAREST
         pair_0 = cv2.resize(pair_0, dsize=(tw, th), interpolation=interpolation)
         pair_1 = cv2.resize(pair_1, dsize=(tw, th), interpolation=interpolation)
 
@@ -305,87 +301,3 @@ class Compose(object):
         for t in self.transforms:
             args = t(*args)
         return args
-
-
-# =============================functions===============================
-
-def resize(img, size, interpolation=cv2.INTER_NEAREST):
-    if not (isinstance(size, int) or (isinstance(size, collections.Iterable) and len(size) == 2)):
-        raise TypeError('Got inappropriate size arg: {}'.format(size))
-
-    h, w, _ = img.shape
-
-    if isinstance(size, int):
-        if (w <= h and w == size) or (h <= w and h == size):
-            return img
-        if w < h:
-            ow = size
-            oh = int(size * h / w)
-            return cv2.resize(img, (ow, oh), interpolation)
-        else:
-            oh = size
-            ow = int(size * w / h)
-            return cv2.resize(img, (ow, oh), interpolation)
-    else:
-        return cv2.resize(img, size[::-1], interpolation)
-
-
-def rotatenumpy(image, angle, interpolation=cv2.INTER_NEAREST):
-    rot_mat = cv2.getRotationMatrix2D((image.shape[1] / 2, image.shape[0] / 2), angle, 1.0)
-    result = cv2.warpAffine(image, rot_mat, (image.shape[1], image.shape[0]), flags=interpolation)
-    return result
-
-
-# good, written with numpy
-def pad_reflection(image, top, bottom, left, right):
-    if top == 0 and bottom == 0 and left == 0 and right == 0:
-        return image
-    h, w = image.shape[:2]
-    next_top = next_bottom = next_left = next_right = 0
-    if top > h - 1:
-        next_top = top - h + 1
-        top = h - 1
-    if bottom > h - 1:
-        next_bottom = bottom - h + 1
-        bottom = h - 1
-    if left > w - 1:
-        next_left = left - w + 1
-        left = w - 1
-    if right > w - 1:
-        next_right = right - w + 1
-        right = w - 1
-    new_shape = list(image.shape)
-    new_shape[0] += top + bottom
-    new_shape[1] += left + right
-    new_image = np.empty(new_shape, dtype=image.dtype)
-    new_image[top:top + h, left:left + w] = image
-    new_image[:top, left:left + w] = image[top:0:-1, :]
-    new_image[top + h:, left:left + w] = image[-1:-bottom - 1:-1, :]
-    new_image[:, :left] = new_image[:, left * 2:left:-1]
-    new_image[:, left + w:] = new_image[:, -right - 1:-right * 2 - 1:-1]
-    return pad_reflection(new_image, next_top, next_bottom,
-                          next_left, next_right)
-
-
-# good, writen with numpy
-def pad_constant(image, top, bottom, left, right, value):
-    if top == 0 and bottom == 0 and left == 0 and right == 0:
-        return image
-    h, w = image.shape[:2]
-    new_shape = list(image.shape)
-    new_shape[0] += top + bottom
-    new_shape[1] += left + right
-    new_image = np.empty(new_shape, dtype=image.dtype)
-    new_image.fill(value)
-    new_image[top:top + h, left:left + w] = image
-    return new_image
-
-
-# change to np/non-np options
-def pad_image(mode, image, top, bottom, left, right, value=0):
-    if mode == 'reflection':
-        return pad_reflection(image, top, bottom, left, right)
-    elif mode == 'constant':
-        return pad_constant(image, top, bottom, left, right, value)
-    else:
-        raise ValueError('Unknown mode {}'.format(mode))

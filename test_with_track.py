@@ -1,27 +1,16 @@
-# OS libraries
-import os
-import cv2
-import glob
-import copy
-import math
-import queue
 import argparse
-import numpy as np
-from tqdm import tqdm
-from PIL import Image
+import copy
+import queue
 
-# Pytorch libraries
-import torch
 import torch.nn as nn
+from tqdm import tqdm
 
-# Customized libraries
-from libs.test_utils import *
-from libs.model import transform
-from libs.utils import norm_mask
-import libs.transforms_pair as transforms
 from libs.model import Model_switchGTfixdot_swCC_Res as Model
-from libs.track_utils import seg2bbox, draw_bbox, match_ref_tar
-from libs.track_utils import squeeze_all, seg2bbox_v2, bbox_in_tar_scale
+from libs.test_utils import *
+from libs.track_utils import seg2bbox, draw_bbox
+from libs.track_utils import seg2bbox_v2
+from libs.utils import norm_mask
+from tracking_utils import adjust_bbox, bbox_next_frame, recognition, disappear
 
 
 ############################## helper functions ##############################
@@ -49,7 +38,6 @@ def parse_args():
                         default="/workspace/DAVIS/",
                         help="davis dataset path")
 
-    print("Begin parser arguments.")
     args = parser.parse_args()
     args.is_train = False
 
@@ -59,6 +47,7 @@ def parse_args():
 
     args.val_txt = os.path.join(args.davis_dir, "ImageSets/2017/val.txt")
     args.davis_dir = os.path.join(args.davis_dir, "JPEGImages/480p/")
+
     return args
 
 
@@ -209,7 +198,7 @@ def forward(frame1, frame2, model, seg, return_feature=False):
     frame2_gray = frame2_gray.repeat(1, 3, 1, 1)
 
     output = model(frame1_gray, frame2_gray, frame1, frame2)
-    if (return_feature):
+    if return_feature:
         return output[-2], output[-1]
 
     aff = output[2]
@@ -218,7 +207,7 @@ def forward(frame1, frame2, model, seg, return_feature=False):
     return frame2_seg
 
 
-def test(model, frame_list, video_dir, first_seg, large_seg, first_bbox, seg_ori):
+def test(model, frame_list, video_dir: str, first_seg, large_seg, first_bbox, seg_ori):
     video_dir = os.path.join(video_dir)
     video_nm = video_dir.split('/')[-1]
     video_folder = os.path.join(args.out_dir, video_nm)
@@ -227,10 +216,10 @@ def test(model, frame_list, video_dir, first_seg, large_seg, first_bbox, seg_ori
 
     transforms = create_transforms()
 
-    # The queue stores `pre_num` preceding frames
+    # The queue stores args.pre_num preceding frames
     que = queue.Queue(args.pre_num)
 
-    # frame 1
+    # first frame
     frame1, ori_h, ori_w = read_frame(frame_list[0], transforms, args.scale_size)
     n, c, h, w = frame1.size()
 
@@ -268,12 +257,12 @@ def test(model, frame_list, video_dir, first_seg, large_seg, first_bbox, seg_ori
                         tmp.upscale(8)
                         vis_bbox(frame_tar, tmp, os.path.join(video_folder, 'track', 'frame' + str(cnt + 1) + '.png'),
                                  coords_ref_tar[1], segi[0, 1, :, :])
-                frame_tar_acc = recoginition(frame1, frame_tar, first_bbox, bbox_tar, first_seg, model)
+                frame_tar_acc = recognition(frame1, frame_tar, first_bbox, bbox_tar, first_seg, model)
             else:
                 frame_tar_acc = forward(frame1, frame_tar, model, first_seg)
             frame_tar_acc = frame_tar_acc.cpu()
 
-            # previous 7 frames
+            # frame cnt - i -> frame cnt, (i = 1, ..., pre_num)
             tmp_queue = list(que.queue)
             for pair in tmp_queue:
                 framei = pair[0]
@@ -285,7 +274,7 @@ def test(model, frame_list, video_dir, first_seg, large_seg, first_bbox, seg_ori
                     frame_tar_est_i = frame_tar_est_i.cpu()
                 else:
 
-                    frame_tar_est_i = recoginition(framei, frame_tar, bboxi, bbox_tar, segi, model)
+                    frame_tar_est_i = recognition(framei, frame_tar, bboxi, bbox_tar, segi, model)
 
                 frame_tar_acc += frame_tar_est_i.cpu().view(frame_tar_acc.size())
             frame_tar_avg = frame_tar_acc / (1 + len(tmp_queue))
@@ -294,11 +283,11 @@ def test(model, frame_list, video_dir, first_seg, large_seg, first_bbox, seg_ori
         out_path = os.path.join(video_folder, frame_nm)
 
         # upsampling & argmax
-        if (frame_tar_avg.dim() == 3):
+        if frame_tar_avg.dim() == 3:
             frame_tar_avg = frame_tar_avg.unsqueeze(0)
         elif (frame_tar_avg.dim() == 2):
             frame_tar_avg = frame_tar_avg.unsqueeze(0).unsqueeze(0)
-        frame_tar_up = torch.nn.functional.interpolate(frame_tar_avg, scale_factor=8, mode='bilinear', align_corners=True)
+        frame_tar_up = FUNC.interpolate(frame_tar_avg, scale_factor=8, mode='bilinear', align_corners=True)
 
         frame_tar_up = frame_tar_up.squeeze()
         frame_tar_up = norm_mask(frame_tar_up.squeeze())
@@ -307,7 +296,7 @@ def test(model, frame_list, video_dir, first_seg, large_seg, first_bbox, seg_ori
         frame_tar_seg = frame_tar_seg.squeeze().cpu().numpy().astype(np.uint8)
         imwrite_indexed(out_path, frame_tar_seg, size=(ori_w, ori_h))
 
-        if (que.qsize() == args.pre_num):
+        if que.qsize() == args.pre_num:
             que.get()
         seg = copy.deepcopy(frame_tar_avg.squeeze())
         frame, ori_h, ori_w = read_frame(frame_list[cnt], transforms, args.scale_size)
@@ -316,12 +305,13 @@ def test(model, frame_list, video_dir, first_seg, large_seg, first_bbox, seg_ori
         que.put([frame, seg.unsqueeze(0), bbox_tar])
 
 
-if (__name__ == '__main__'):
+if __name__ == '__main__':
     args = parse_args()
     with open(args.val_txt) as f:
         lines = f.readlines()
     f.close()
 
+    # loading pretrained model
     model = Model(pretrainRes=False, temp=args.temp, uselayer=4)
     if (args.multiGPU):
         model = nn.DataParallel(model)
@@ -333,6 +323,7 @@ if (__name__ == '__main__'):
     model.cuda()
     model.eval()
 
+    # start testing
     for cnt, line in enumerate(lines):
         video_nm = line.strip()
         print('[{:n}/{:n}] Begin to segmentate video {}.'.format(cnt, len(lines), video_nm))

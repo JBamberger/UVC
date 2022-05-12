@@ -1,23 +1,18 @@
-# OS libraries
-import os
+import argparse
 import copy
 import queue
-import argparse
-import numpy as np
+
+import torch.nn as nn
 from tqdm import tqdm
 
-# Pytorch
-import torch
-import torch.nn as nn
-
-# Customized libraries
-from libs.test_utils import *
-from libs.model import transform
-from libs.utils import norm_mask
 from libs.model import Model_switchGTfixdot_swCC_Res as Model
+from libs.test_utils import *
+from libs.utils import norm_mask
 
 
 ############################## helper functions ##############################
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", type=int, default=1,
@@ -29,13 +24,13 @@ def parse_args():
     parser.add_argument("-c", "--checkpoint_dir", type=str,
                         default="weights/checkpoint_latest.pth.tar",
                         help="checkpoints path")
-    parser.add_argument("-s", "--scale_size", type=int, nargs="+",
-                        help="scale size, a single number for shorter edge, or a pair for height and width")
+    parser.add_argument("-s", "--scale_size", type=int, nargs='+',
+                        help="scale size, either a single number for short edge, or a pair for height and width")
     parser.add_argument("--pre_num", type=int, default=7,
                         help="preceding frame numbers")
     parser.add_argument("--temp", type=float, default=1,
                         help="softmax temperature")
-    parser.add_argument("--topk", type=int, default=5,
+    parser.add_argument("-t", "--topk", type=int, default=5,
                         help="accumulate label from top k neighbors")
     parser.add_argument("-d", "--davis_dir", type=str,
                         default="/workspace/DAVIS/",
@@ -57,9 +52,6 @@ def parse_args():
 ############################## testing functions ##############################
 
 def forward(frame1, frame2, model, seg):
-    """
-    propagate seg of frame1 to frame2
-    """
     n, c, h, w = frame1.size()
     frame1_gray = frame1[:, 0].view(n, 1, h, w)
     frame2_gray = frame2[:, 0].view(n, 1, h, w)
@@ -68,13 +60,12 @@ def forward(frame1, frame2, model, seg):
 
     output = model(frame1_gray, frame2_gray, frame1, frame2)
     aff = output[2]
-
     frame2_seg = transform_topk(aff, seg.cuda(), k=args.topk)
 
     return frame2_seg
 
 
-def test(model, frame_list, video_dir, first_seg, seg_ori):
+def test(model, frame_list, video_dir: str, first_seg, seg_ori):
     """
     test on a video given first frame & segmentation
     """
@@ -124,7 +115,7 @@ def test(model, frame_list, video_dir, first_seg, seg_ori):
         que.put([frame, seg])
 
         # upsampling & argmax
-        frame_tar_avg = torch.nn.functional.interpolate(frame_tar_avg, scale_factor=8, mode='bilinear', align_corners=True)
+        frame_tar_avg = FUNC.interpolate(frame_tar_avg, scale_factor=8, mode='bilinear', align_corners=True)
         frame_tar_avg = frame_tar_avg.squeeze()
         frame_tar_avg = norm_mask(frame_tar_avg.squeeze())
         _, frame_tar_seg = torch.max(frame_tar_avg, dim=0)
@@ -134,8 +125,6 @@ def test(model, frame_list, video_dir, first_seg, seg_ori):
         output_path = os.path.join(video_folder, frame_nm.split('.')[0] + '_seg.png')
         imwrite_indexed(out_path, frame_tar_seg, size=(ori_w, ori_h))
 
-
-############################## main function ##############################
 
 if __name__ == '__main__':
     args = parse_args()
